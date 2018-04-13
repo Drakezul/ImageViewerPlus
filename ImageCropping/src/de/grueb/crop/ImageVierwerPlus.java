@@ -3,6 +3,7 @@ package de.grueb.crop;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.awt.Graphics;
@@ -36,9 +37,11 @@ import javax.swing.InputMap;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
+import javax.swing.UIManager;
 
 @SuppressWarnings("serial")
 public class ImageVierwerPlus extends JPanel {
@@ -55,7 +58,8 @@ public class ImageVierwerPlus extends JPanel {
 		ROTATE_ANTI_CLOCKWISE(KeyStroke.getKeyStroke("DOWN")),
 		TOGGLE_FULLSCREEN(KeyStroke.getKeyStroke("F11")),
 		TOGGLE_SLIDESHOW(KeyStroke.getKeyStroke("F5")),
-		OPEN_EXPLORER(KeyStroke.getKeyStroke("SPACE"));
+		OPEN_EXPLORER(KeyStroke.getKeyStroke("SPACE")),
+		DELETE_IMAGE(KeyStroke.getKeyStroke("DELETE"));
 
 		private final KeyStroke keyStroke;
 
@@ -105,9 +109,13 @@ public class ImageVierwerPlus extends JPanel {
 	public ImageVierwerPlus(List<File> images, JFrame parent, int slideShowInterval) {
 		this(images, parent);
 		this.slideShow = new TimedTask(slideShowInterval, () -> {
-			getActionForKeyStroke(Actions.NEXT_PRESSED.keyStroke).actionPerformed(null);
-			getActionForKeyStroke(Actions.NEXT_RELEASED.keyStroke).actionPerformed(null);
+			showNextImage();
 		});
+	}
+
+	private void showNextImage() {
+		getActionForKeyStroke(Actions.NEXT_PRESSED.keyStroke).actionPerformed(null);
+		getActionForKeyStroke(Actions.NEXT_RELEASED.keyStroke).actionPerformed(null);
 	}
 
 	private void addDisposeCountdown(final JFrame parent) {
@@ -259,6 +267,20 @@ public class ImageVierwerPlus extends JPanel {
 				e1.printStackTrace();
 			}
 		});
+		addAction(Actions.DELETE_IMAGE, event -> {
+			int confirmDelete = JOptionPane.showConfirmDialog(null,
+					"Do you really want to delete " + getImageFile().getName() + "?", "Confirm",
+					JOptionPane.YES_NO_OPTION);
+			if (confirmDelete == JOptionPane.YES_OPTION) {
+				boolean trashed = Desktop.isDesktopSupported() && Desktop.getDesktop().moveToTrash(getImageFile());
+				if (!trashed) {
+					getImageFile().delete();
+				}
+				images.remove(imageIndex);
+				imageIndex--;
+				showNextImage();
+			}
+		});
 	}
 
 	private void updateTitle() {
@@ -403,6 +425,7 @@ public class ImageVierwerPlus extends JPanel {
 	}
 
 	public static void main(String[] args) throws Exception {
+		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		JFrame frame = getFrame(false, null);
 		List<File> images = new ImageFinder(frame).getImages();
 		frame.add(new ImageVierwerPlus(images, frame, 3), BorderLayout.CENTER);
