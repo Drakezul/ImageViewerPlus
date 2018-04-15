@@ -1,4 +1,4 @@
-package de.grueb.crop;
+package de.grueb.crop.Utils;
 
 import java.awt.Point;
 import java.awt.Rectangle;

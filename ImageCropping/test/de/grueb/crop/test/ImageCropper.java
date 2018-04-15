@@ -7,7 +7,7 @@ import java.awt.Rectangle;
 
 import org.junit.jupiter.api.Test;
 
-import de.grueb.crop.GeometryUtils;
+import de.grueb.crop.Utils.GeometryUtils;
 
 public class ImageCropper {
 

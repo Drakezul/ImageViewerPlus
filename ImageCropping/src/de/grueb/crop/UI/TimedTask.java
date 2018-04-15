@@ -1,4 +1,4 @@
-package de.grueb.crop;
+package de.grueb.crop.UI;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -16,6 +16,10 @@ public class TimedTask {
 		this.intervalSeconds = intervalSeconds;
 		this.command = command;
 		executor = Executors.newScheduledThreadPool(1);
+	}
+
+	public TimedTask(int intervalSeconds) {
+		this(intervalSeconds, null);
 	}
 
 	/**
@@ -72,6 +76,10 @@ public class TimedTask {
 
 	public void setInterval(long interval) {
 		this.intervalSeconds = interval;
+	}
+
+	public void setCommad(Runnable command) {
+		this.command = command;
 	}
 
 }

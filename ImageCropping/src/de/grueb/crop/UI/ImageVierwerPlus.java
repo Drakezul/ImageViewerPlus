@@ -1,4 +1,4 @@
-package de.grueb.crop;
+package de.grueb.crop.UI;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -41,36 +41,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
-import javax.swing.UIManager;
+
+import de.grueb.crop.Utils.GeometryUtils;
+import de.grueb.crop.enums.KeyBinding;
+import de.grueb.crop.interfaces.ConfigurableKeyBinding;
+import de.grueb.crop.interfaces.HasKeyStroke;
 
 @SuppressWarnings("serial")
-public class ImageVierwerPlus extends JPanel {
-
-	private enum Actions {
-		PREVIOUS_PRESSED(KeyStroke.getKeyStroke("pressed LEFT")),
-		PREVIOUS_RELEASED(KeyStroke.getKeyStroke("released LEFT")),
-		NEXT_PRESSED(KeyStroke.getKeyStroke("pressed RIGHT")),
-		NEXT_RELEASED(KeyStroke.getKeyStroke("released RIGHT")),
-		CROP(KeyStroke.getKeyStroke("ENTER")),
-		SAVE(KeyStroke.getKeyStroke("control S")),
-		CANCEL(KeyStroke.getKeyStroke("ESCAPE")),
-		ROTATE_CLOCKWISE(KeyStroke.getKeyStroke("UP")),
-		ROTATE_ANTI_CLOCKWISE(KeyStroke.getKeyStroke("DOWN")),
-		TOGGLE_FULLSCREEN(KeyStroke.getKeyStroke("F11")),
-		TOGGLE_SLIDESHOW(KeyStroke.getKeyStroke("F5")),
-		OPEN_EXPLORER(KeyStroke.getKeyStroke("SPACE")),
-		DELETE_IMAGE(KeyStroke.getKeyStroke("DELETE"));
-
-		private final KeyStroke keyStroke;
-
-		private Actions(KeyStroke keyStroke) {
-			this.keyStroke = keyStroke;
-		}
-
-		public KeyStroke getKeyStroke() {
-			return keyStroke;
-		}
-	}
+public class ImageVierwerPlus extends JPanel implements ConfigurableKeyBinding {
 
 	private List<File> images;
 
@@ -82,7 +60,6 @@ public class ImageVierwerPlus extends JPanel {
 	private boolean isBorderless = false;
 	private JFrame parentFrame;
 	private TimedTask slideShow;
-	private TimedTask countdown;
 
 	public ImageVierwerPlus(List<File> images, JFrame parent) {
 		this.images = images;
@@ -104,6 +81,7 @@ public class ImageVierwerPlus extends JPanel {
 		} else {
 			addDisposeCountdown(parent);
 		}
+		new KeyConfigurator<KeyBinding>("KeyConfigurator", this, KeyBinding.class);
 	}
 
 	public ImageVierwerPlus(List<File> images, JFrame parent, int slideShowInterval) {
@@ -114,8 +92,8 @@ public class ImageVierwerPlus extends JPanel {
 	}
 
 	private void showNextImage() {
-		getActionForKeyStroke(Actions.NEXT_PRESSED.keyStroke).actionPerformed(null);
-		getActionForKeyStroke(Actions.NEXT_RELEASED.keyStroke).actionPerformed(null);
+		getActionForKeyStroke(KeyBinding.NEXT_PRESSED.getKeyStroke()).actionPerformed(null);
+		getActionForKeyStroke(KeyBinding.NEXT_RELEASED.getKeyStroke()).actionPerformed(null);
 	}
 
 	private void addDisposeCountdown(final JFrame parent) {
@@ -129,28 +107,31 @@ public class ImageVierwerPlus extends JPanel {
 		this.add(timer, BorderLayout.CENTER);
 
 		CountDownLatch latch = new CountDownLatch(secondsToDispose);
-		this.countdown = new TimedTask(1, () -> {
+		TimedTask countdown = new TimedTask(1);
+		countdown.setCommad(() -> {
 			if (latch.getCount() == 0) {
-				this.countdown.stop();
+				countdown.stop();
 				parent.dispatchEvent(new WindowEvent(parent, WindowEvent.WINDOW_CLOSING));
 			} else {
 				timer.setText(latch.getCount() + " seconds until shutdown");
 				latch.countDown();
 			}
 		});
-		this.countdown.start();
+		countdown.start();
 
 		this.repaint();
 	}
 
 	private void addMouseEventListeners() {
 		this.addMouseListener(new MouseAdapter() {
+			@Override
 			public void mousePressed(MouseEvent event) {
 				startPoint = forceBounds(event.getPoint());
 				currentPoint = null;
 				repaint();
 			}
 
+			@Override
 			public void mouseReleased(MouseEvent event) {
 				if (startPoint != null && currentPoint != null) {
 					endPoint = currentPoint;
@@ -161,6 +142,7 @@ public class ImageVierwerPlus extends JPanel {
 		});
 
 		this.addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
 			public void mouseDragged(MouseEvent event) {
 				currentPoint = forceBounds(event.getPoint());
 				repaint();
@@ -176,29 +158,31 @@ public class ImageVierwerPlus extends JPanel {
 
 	private void addKeyBindings() {
 		// next image
-		addAction(Actions.NEXT_PRESSED, e -> {
+		addAction(KeyBinding.NEXT_PRESSED, e -> {
 			imageIndex++;
 			if (imageIndex > images.size() - 1) {
 				imageIndex -= images.size();
 			}
 			updateTitle();
 		});
-		addAction(Actions.NEXT_RELEASED, e -> {
+		addAction(KeyBinding.NEXT_RELEASED, e -> {
 			updateImage();
 		});
 		// previous image
-		addAction(Actions.PREVIOUS_PRESSED, event -> {
+		addAction(KeyBinding.PREVIOUS_PRESSED, event -> {
+			System.out.println(KeyBinding.PREVIOUS_PRESSED.name());
 			imageIndex--;
 			if (imageIndex < 0) {
 				imageIndex += images.size();
 			}
 			updateTitle();
 		});
-		addAction(Actions.PREVIOUS_RELEASED, e -> {
+		addAction(KeyBinding.PREVIOUS_RELEASED, e -> {
+			System.out.println(KeyBinding.PREVIOUS_RELEASED.name());
 			updateImage();
 		});
 		// crop
-		addAction(Actions.CROP, event -> {
+		addAction(KeyBinding.CROP, event -> {
 			if (currentSelection != null) {
 				BufferedImage croppedImage = new BufferedImage(currentSelection.width, currentSelection.height,
 						BufferedImage.TYPE_INT_RGB);
@@ -216,7 +200,7 @@ public class ImageVierwerPlus extends JPanel {
 			}
 		});
 		// save
-		addAction(Actions.SAVE, event -> {
+		addAction(KeyBinding.SAVE, event -> {
 			try {
 				File imageFile = images.get(imageIndex);
 				String type = imageFile.getName().substring(imageFile.getName().lastIndexOf(".") + 1);
@@ -230,7 +214,7 @@ public class ImageVierwerPlus extends JPanel {
 			}
 		});
 		// reset unsaved change
-		addAction(Actions.CANCEL, event -> {
+		addAction(KeyBinding.CANCEL, event -> {
 			this.updateImage();
 			if (isBorderless) {
 				setFullscreen(false);
@@ -240,18 +224,18 @@ public class ImageVierwerPlus extends JPanel {
 			}
 		});
 		// rotate clockwise
-		addAction(Actions.ROTATE_CLOCKWISE, event -> {
+		addAction(KeyBinding.ROTATE_CLOCKWISE, event -> {
 			scaledDrawing = rotateImage(scaledDrawing, 90);
 			repaint();
 		});
-		addAction(Actions.ROTATE_ANTI_CLOCKWISE, event -> {
+		addAction(KeyBinding.ROTATE_ANTI_CLOCKWISE, event -> {
 			scaledDrawing = rotateImage(scaledDrawing, -90);
 			repaint();
 		});
-		addAction(Actions.TOGGLE_FULLSCREEN, event -> {
+		addAction(KeyBinding.TOGGLE_FULLSCREEN, event -> {
 			setFullscreen(!isBorderless);
 		});
-		addAction(Actions.TOGGLE_SLIDESHOW, event -> {
+		addAction(KeyBinding.TOGGLE_SLIDESHOW, event -> {
 			if (slideShow != null) {
 				if (slideShow.isStopped()) {
 					slideShow.start();
@@ -260,14 +244,14 @@ public class ImageVierwerPlus extends JPanel {
 				}
 			}
 		});
-		addAction(Actions.OPEN_EXPLORER, event -> {
+		addAction(KeyBinding.OPEN_EXPLORER, event -> {
 			try {
 				Runtime.getRuntime().exec("explorer.exe /select," + getImageFile().getPath());
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}
 		});
-		addAction(Actions.DELETE_IMAGE, event -> {
+		addAction(KeyBinding.DELETE_IMAGE, event -> {
 			int confirmDelete = JOptionPane.showConfirmDialog(null,
 					"Do you really want to delete " + getImageFile().getName() + "?", "Confirm",
 					JOptionPane.YES_NO_OPTION);
@@ -317,16 +301,29 @@ public class ImageVierwerPlus extends JPanel {
 		return rotatedImage;
 	}
 
-	private void addAction(Actions actionMapKey, Consumer<ActionEvent> function) {
-		InputMap focusedWindowInputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-		focusedWindowInputMap.put(actionMapKey.getKeyStroke(), actionMapKey);
+	private void addAction(KeyBinding action, Consumer<ActionEvent> function) {
+		InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+		inputMap.put(action.getKeyStroke(), action);
 		ActionMap focusedWindowActionMap = this.getActionMap();
-		focusedWindowActionMap.put(actionMapKey, new AbstractAction() {
+		focusedWindowActionMap.put(action, new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				function.accept(event);
 			}
 		});
+	}
+
+	@Override
+	public void changeKeyBinding(HasKeyStroke action) {
+		InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+		for (KeyStroke stroke : inputMap.keys()) {
+			boolean isKeyForAction = inputMap.get(stroke) == (action);
+			if (isKeyForAction && !stroke.equals(action.getKeyStroke())) {
+				inputMap.remove(stroke);
+				inputMap.put(action.getKeyStroke(), action);
+				return;
+			}
+		}
 	}
 
 	private File getImageFile() {
@@ -395,8 +392,9 @@ public class ImageVierwerPlus extends JPanel {
 		JFrame frame = new JFrame();
 		frame.setUndecorated(undecorated);
 		frame.addWindowListener(new WindowAdapter() {
+			@Override
 			public void windowClosing(WindowEvent we) {
-				System.exit(1);
+				frame.dispose();
 			}
 
 		});
@@ -422,13 +420,5 @@ public class ImageVierwerPlus extends JPanel {
 		} else {
 			throw new RuntimeException("No Screens Found");
 		}
-	}
-
-	public static void main(String[] args) throws Exception {
-		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		JFrame frame = getFrame(false, null);
-		List<File> images = new ImageFinder(frame).getImages();
-		frame.add(new ImageVierwerPlus(images, frame, 3), BorderLayout.CENTER);
-		frame.repaint();
 	}
 }

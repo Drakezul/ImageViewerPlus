@@ -1,4 +1,4 @@
-package de.grueb.crop;
+package de.grueb.crop.UI;
 
 import java.awt.Component;
 import java.io.File;
@@ -9,7 +9,7 @@ import java.util.List;
 
 import javax.swing.JFileChooser;
 
-public class ImageFinder {
+public final class ImageFinder {
 
 	private static final String[] imageTypes = new String[] { "jpg", "png" };
 
@@ -20,26 +20,51 @@ public class ImageFinder {
 		};
 	};
 
-	private String currentDirectory;
+	/**
+	 * Relative position of the FileChooser
+	 */
 	private Component parent;
 
 	private List<File> images = new ArrayList<File>(20);
 
+	/**
+	 * Start filechooser at designated path with given parentComponent
+	 * 
+	 * @param startDirectory
+	 * @param parent
+	 *            is used for relative position of the fileChooser
+	 */
 	public ImageFinder(String startDirectory, Component parent) {
-		this.currentDirectory = startDirectory;
 		this.parent = parent;
-		openFileChooserAndListImages();
+		openFileChooserAndListImages(startDirectory);
 	}
 
+	/**
+	 * Start fileChooser on desktop
+	 * 
+	 * @param parent
+	 *            for relative position of the fileChooser
+	 */
 	public ImageFinder(Component parent) {
 		this(System.getProperty("user.home") + "/Desktop", parent);
+	}
+
+	/**
+	 * Skip filechooser and list images of given folder (and subs)
+	 * 
+	 * @param folder
+	 * @param parent
+	 */
+	public ImageFinder(File folder, Component parent) {
+		this.parent = parent;
+		addImagesToList(folder, true);
 	}
 
 	public ImageFinder() {
 		this(null);
 	}
 
-	private void openFileChooserAndListImages() {
+	private void openFileChooserAndListImages(String currentDirectory) {
 		JFileChooser fileChooser = new JFileChooser();
 		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		fileChooser.setCurrentDirectory(new File(currentDirectory));
@@ -51,14 +76,14 @@ public class ImageFinder {
 		}
 	}
 
-	private void addImagesToList(File directory, boolean recursive) {
+	private void addImagesToList(final File directory, final boolean recursive) {
 		addImagesToList(directory);
 		if (recursive) {
-			Arrays.stream(directory.listFiles(File::isDirectory)).forEach((file) -> addImagesToList(file, true));
+			Arrays.stream(directory.listFiles(File::isDirectory)).forEach((file) -> addImagesToList(file, recursive));
 		}
 	}
 
-	private void addImagesToList(File directory) {
+	private void addImagesToList(final File directory) {
 		images.addAll(Arrays.asList(directory.listFiles(imageFilter)));
 	}
 
